@@ -5,14 +5,12 @@
 |---|---|
 | **System** | Recruitment Assistant — multi-agent candidate-side tool |
 | **Adapter** | `crewai` (default; `AAMAD_ADAPTER` was unset at generation time) |
-| **Upstream artifacts** | `project-context/1.define/mrd.md`, `project-context/1.define/prd.md` |
+| **Upstream artifacts** | `project-context/1.define/market-research.md`, `project-context/1.define/product-requirements-document.md` |
 | **Author** | @system-arch |
 | **Scope** | Full SAD covering all 10 template sections. MVP vs. Future Work is marked per section. |
 | **Status** | Draft — pending handoff to @project-mgr for Phase 2 scaffold. |
 
 ### Traceability note
-The system-arch persona file references `market-research.md` and `product-requirements-document.md` as canonical input paths. The actual upstream artifacts in this repository are `mrd.md` and `prd.md` — those are the files cited throughout this SAD. See §Audit → Open Questions.
-
 User stories were not provided as discrete files under `project-context/1.define/user-stories/`. This SAD traces to PRD feature IDs (**F-1**–**F-7**) as story proxies per PRD §4. See §Audit → Assumptions.
 
 ---
@@ -569,7 +567,7 @@ Each deferral has a corresponding place in this SAD where it would slot in; noth
 
 - **AAMAD adapter resolved**: `crewai` (default). `AAMAD_ADAPTER` environment variable was **unset** at generation time. *(Per system-arch persona instructions, the resolved adapter is recorded here.)*
 - **Template used**: `.cursor/templates/sad-template.md`. Section headings preserved.
-- **Inputs consulted**: `project-context/1.define/mrd.md`, `project-context/1.define/prd.md`, `.cursor/agents/system-arch.md`, `.cursor/templates/sad-template.md`.
+- **Inputs consulted**: `project-context/1.define/market-research.md`, `project-context/1.define/product-requirements-document.md`, `.cursor/agents/system-arch.md`, `.cursor/templates/sad-template.md`.
 - **Outputs produced**: `project-context/1.define/sad.md` (this document).
 - **Prohibited actions respected**: no new product requirements introduced beyond MRD/PRD; no non-MVP components added as MVP; no code or pipeline modifications made.
 
@@ -581,10 +579,9 @@ Each deferral has a corresponding place in this SAD where it would slot in; noth
 5. The LLM provider supports schema-constrained generation (JSON mode or equivalent tool-use). If a chosen provider does not, the Parser/Ranker/Coach tools need a validation-and-retry loop, adding latency.
 
 ### Open Questions
-1. **Canonical input path naming.** The system-arch persona references `market-research.md` and `product-requirements-document.md`; the actual files are `mrd.md` and `prd.md`. Should the persona or filenames be reconciled? (Recommend: @product-mgr standardize filenames in a follow-up.)
-2. **User-stories directory.** Should PRD features (F-1 … F-7) be split into discrete files under `project-context/1.define/user-stories/` to enable per-feature SFS generation via `@system-arch *create-sfs`? (Recommend: yes, before Phase 2 build starts.)
-3. **Permitted source selection.** Which public feed is the primary live source for MVP? Candidates: Hacker News "Who is hiring" monthly thread, a specific job-board RSS, or a partner API. @project-mgr to confirm during scaffold.
-4. **LLM provider choice.** Not specified in MRD/PRD. Recommend selecting one with robust schema-constrained generation (e.g., Anthropic or OpenAI) during scaffold; impacts Parser/Ranker/Coach reliability.
+1. **User-stories directory.** Should PRD features (F-1 … F-7) be split into discrete files under `project-context/1.define/user-stories/` to enable per-feature SFS generation via `@system-arch *create-sfs`? (Recommend: yes, before Phase 2 build starts.)
+2. **Permitted source selection.** Which public feed is the primary live source for MVP? Candidates: Hacker News "Who is hiring" monthly thread, a specific job-board RSS, or a partner API. @project-mgr to confirm during scaffold.
+3. **LLM provider choice.** Not specified in MRD/PRD. Recommend selecting one with robust schema-constrained generation (e.g., Anthropic or OpenAI) during scaffold; impacts Parser/Ranker/Coach reliability.
 5. **Eval dataset ownership.** Who curates the 20-JD parsing eval set and 10-pair Coach grounding eval? @qa-eng by role, but the candidate resumes needed for grounding evals touch PII concerns — recommend synthetic or publicly shared resumes only.
 
 ### Next Deliverables
@@ -594,5 +591,5 @@ Each deferral has a corresponding place in this SAD where it would slot in; noth
 ---
 
 *Artifact path: `project-context/1.define/sad.md`*
-*Upstream: `project-context/1.define/mrd.md`, `project-context/1.define/prd.md`*
+*Upstream: `project-context/1.define/market-research.md`, `project-context/1.define/product-requirements-document.md`*
 *Next artifact(s): SFS files under `project-context/1.define/sfs/` by @system-arch; scaffold by @project-mgr.*

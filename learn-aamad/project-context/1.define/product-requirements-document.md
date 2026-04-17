@@ -7,7 +7,7 @@
 | **Framework** | CrewAI (sequential crew) |
 | **Primary user** | Job seekers pursuing tech roles (engineering, data, PM, design) |
 | **Context** | AAMAD bootcamp learning artifact |
-| **Upstream artifact** | `project-context/1.define/mrd.md` |
+| **Upstream artifact** | `project-context/1.define/market-research.md` |
 | **Author** | @product-mgr |
 | **Status** | Draft — pending handoff to @system-arch |
 
@@ -383,6 +383,6 @@ SAD should produce: component diagram, agent task definitions, schema definition
 
 ---
 
-*Artifact path: `project-context/1.define/prd.md`*
-*Upstream: `project-context/1.define/mrd.md`*
+*Artifact path: `project-context/1.define/product-requirements-document.md`*
+*Upstream: `project-context/1.define/market-research.md`*
 *Next artifact: SAD by @system-arch in `project-context/1.define/` (path per system-arch persona spec).*

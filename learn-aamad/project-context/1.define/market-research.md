@@ -235,6 +235,6 @@ Build an MVP that accepts a resume + career-intent prompt, returns a ranked shor
 
 ---
 
-*Artifact path: `project-context/1.define/mrd.md`*
-*Next artifact: `project-context/1.define/prd.md`*
+*Artifact path: `project-context/1.define/market-research.md`*
+*Next artifact: `project-context/1.define/product-requirements-document.md`*
 *Downstream owners: @system-arch (SAD), then @project-mgr for scaffold.*

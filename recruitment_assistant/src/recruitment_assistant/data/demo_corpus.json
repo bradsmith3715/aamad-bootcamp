@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "slug": "nimbus-senior-backend",
+      "title": "Senior Backend Engineer",
+      "company": "Nimbus Labs",
+      "location": "Remote (US)",
+      "raw_description": "About Nimbus Labs\nNimbus builds developer tools that turn raw platform metrics into actionable alerts. Our backend serves ~20k QPS across a mix of real-time and batch workloads.\n\nWhat you'll do\n- Own a service area end-to-end: design, build, operate.\n- Improve our ingestion pipeline throughput and latency.\n- Mentor mid-level engineers and contribute to the on-call rotation.\n\nRequirements\n- 5+ years building production Python services.\n- Strong experience with FastAPI (or similar async frameworks) and PostgreSQL.\n- Comfortable with Docker, Kubernetes, and at least one major cloud (AWS preferred).\n- Ability to debug distributed systems from first principles.\n\nNice to have\n- Experience with Kafka or other streaming systems.\n- Open-source contributions.\n\nCompensation: $185k–$230k base + equity. Fully remote within the US."
+    },
+    {
+      "slug": "tessel-go-swe",
+      "title": "Software Engineer II (Go)",
+      "company": "Tessel",
+      "location": "San Francisco, CA (Hybrid)",
+      "raw_description": "The role\nTessel runs the reliability layer for a growing set of SaaS products. We're hiring a mid-level Go engineer to help us cut incident-to-fix time.\n\nResponsibilities\n- Build and maintain Go microservices on GCP.\n- Write clean, well-tested code with a bias toward operational simplicity.\n- Participate in a follow-the-sun on-call rotation (1 week in 8).\n\nMust have\n- 3+ years of Go in production.\n- Solid understanding of concurrency primitives and profiling.\n- Experience with gRPC or REST APIs at scale.\n- Comfortable writing SQL against Postgres.\n\nBonus\n- Kubernetes operations experience.\n- Terraform or Pulumi fluency.\n\nLocation: Hybrid in San Francisco (2 days/week onsite). Compensation: $160k–$205k + equity."
+    },
+    {
+      "slug": "orbit-data-eng",
+      "title": "Data Engineer",
+      "company": "Orbit Analytics",
+      "location": "Remote (EU)",
+      "raw_description": "Orbit Analytics powers customer insights for mid-market SaaS companies. Our data platform processes hundreds of millions of events daily.\n\nWe're looking for a Data Engineer to join the platform team.\n\nYou will\n- Build and tune Spark and dbt pipelines feeding our customer analytics warehouse.\n- Own data-quality checks and freshness SLAs across the pipeline.\n- Partner with analytics engineers on modeling standards.\n\nRequirements\n- 3–6 years building production data pipelines in Python.\n- Hands-on with Spark (PySpark), dbt, and Snowflake or BigQuery.\n- Strong SQL and a bias toward data correctness.\n\nNice to haves\n- Airflow or Dagster experience.\n- Exposure to CDC tooling (Debezium, Fivetran).\n\nFully remote across the EU. Flexible working hours; 25 days PTO + bank holidays."
+    },
+    {
+      "slug": "keelhaul-platform",
+      "title": "Platform Engineer",
+      "company": "Keelhaul",
+      "location": "New York, NY (Hybrid)",
+      "raw_description": "Keelhaul is building the infrastructure layer that lets fintechs ship new products in weeks instead of quarters.\n\nThe role\nJoin the Platform team to evolve our internal developer platform (IDP). You'll reduce toil for ~200 engineers and make our Kubernetes story boring (in a good way).\n\nWhat we need\n- 4+ years in platform or infrastructure engineering.\n- Production Kubernetes, Terraform, and GitOps (Argo CD) experience.\n- Familiarity with AWS (EKS, IAM, VPC networking).\n- Strong scripting skills in Python or Go.\n\nExtra credit\n- Building internal platforms or developer-portal tooling (Backstage).\n- SRE-flavored background: SLOs, error budgets, incident review.\n\nLocation: NYC hybrid, 3 days/week onsite. $180k–$220k base + equity."
+    },
+    {
+      "slug": "lumenari-frontend",
+      "title": "Senior Frontend Engineer",
+      "company": "Lumenari",
+      "location": "Remote (Americas)",
+      "raw_description": "Lumenari builds diagnostic software for clinical labs. Our UI is where overworked technologists spend their day, so the bar for quality is high.\n\nYou will\n- Lead the next generation of our React + TypeScript frontend.\n- Own component architecture decisions and push our design system forward.\n- Partner with product on complex data-dense workflows.\n\nMust have\n- 6+ years shipping production React applications with TypeScript.\n- Deep understanding of browser rendering and accessibility (WCAG).\n- Experience building and maintaining a component library.\n- Excellent design sensibility and written communication.\n\nNice to have\n- Data-visualization experience (d3, Visx, Observable Plot).\n- Healthcare, fintech, or other regulated-industry background.\n\nFully remote (Americas time zones). $170k–$210k + equity."
+    },
+    {
+      "slug": "mirra-fullstack",
+      "title": "Full-Stack Engineer",
+      "company": "Mirra Health",
+      "location": "Boston, MA (Hybrid)",
+      "raw_description": "Mirra helps clinics coordinate chronic-care patients. We're a 40-person company shipping to production multiple times a day.\n\nWhat you'll do\n- Own features end-to-end across our Node.js backend and Next.js frontend.\n- Write tests that give us confidence without slowing us down.\n- Take part in a small, supportive on-call rotation.\n\nMust-have\n- 3+ years shipping production full-stack applications.\n- Proficiency in TypeScript and Node.js.\n- Comfortable with PostgreSQL schema design and query tuning.\n- Experience with React or Next.js.\n\nNice to have\n- Prior healthtech experience (HIPAA awareness helpful).\n- Familiarity with Prisma or TypeORM.\n\nLocation: Hybrid in Boston, MA (2 days/week onsite). $150k–$180k + equity."
+    },
+    {
+      "slug": "pelican-ml",
+      "title": "Machine Learning Engineer",
+      "company": "Pelican Research",
+      "location": "London, UK (Hybrid)",
+      "raw_description": "Pelican Research builds models for radiology triage used in NHS trusts and private imaging providers.\n\nYou will\n- Productionize new classification and segmentation models from our research team.\n- Own model-serving infrastructure: latency, reliability, model monitoring.\n- Collaborate closely with clinical partners to validate real-world performance.\n\nRequirements\n- 4+ years of production machine-learning experience.\n- Strong PyTorch fluency and a solid grasp of MLOps fundamentals.\n- Experience with Python backends (FastAPI or similar) and cloud deployment.\n- Comfortable in regulated environments (ISO 13485 or FDA SaMD).\n\nBonus\n- Medical-imaging background (DICOM, radiology workflow).\n- Experience with Triton Inference Server or Ray Serve.\n\nLocation: London, hybrid 2 days/week onsite. £85k–£115k + equity + pension."
+    },
+    {
+      "slug": "briza-sre",
+      "title": "Site Reliability Engineer",
+      "company": "Briza",
+      "location": "Remote (US / Canada)",
+      "raw_description": "Briza runs the payment-intelligence backbone for several large retailers. When our systems hiccup, someone's checkout is hiccupping too.\n\nAbout the role\nWe're expanding the SRE team from 4 to 7. You'll bring SLOs to an area of our stack that needs them and help reduce our MTTR.\n\nMust have\n- 5+ years in SRE, platform, or infrastructure roles.\n- Deep AWS experience (VPC, IAM, RDS, EKS).\n- Terraform modules and GitOps pipelines.\n- On-call discipline: you write runbooks your future self will thank you for.\n\nNice to have\n- Experience with chaos engineering or game days.\n- Background in payments or high-availability systems.\n\nFully remote (US or Canada). $175k–$210k + equity."
+    },
+    {
+      "slug": "artisan-junior-ruby",
+      "title": "Junior Backend Developer",
+      "company": "Artisan Software",
+      "location": "Berlin, DE (Hybrid)",
+      "raw_description": "Artisan Software builds the back-of-house tools for high-end hospitality groups across Europe.\n\nWe're hiring our next Junior Backend Developer. This is a role for someone with 1–2 years of experience (or a strong bootcamp / intern record) who wants to be mentored by a thoughtful, senior-heavy team.\n\nMust have\n- 1+ year of experience with Ruby on Rails in a production setting.\n- Comfortable with Postgres, basic SQL, and Git.\n- Solid fundamentals in testing (RSpec or Minitest).\n\nNice to have\n- Some React exposure for small admin UI tweaks.\n- German or French language skills.\n\nLocation: Berlin office (hybrid, 2 days/week onsite). Full relocation support for EU citizens. €55k–€70k."
+    },
+    {
+      "slug": "tidepool-ios",
+      "title": "Staff iOS Engineer",
+      "company": "Tidepool",
+      "location": "Remote (US)",
+      "raw_description": "Tidepool's app is on millions of iPhones helping users manage chronic conditions. We're looking for a Staff iOS Engineer to set direction for our mobile platform.\n\nYou will\n- Lead architectural decisions on our Swift codebase (SwiftUI-first, some UIKit).\n- Mentor senior engineers and raise the bar on testing and observability.\n- Influence how we build features from idea to production.\n\nMust have\n- 8+ years of iOS engineering with strong Swift fluency.\n- Track record of leading technical direction on large apps.\n- Experience with offline-first mobile architectures.\n- Excellent written communication and a bias to document.\n\nNice to have\n- Background in healthcare or regulated industries.\n- Prior experience mentoring via RFCs and design reviews.\n\nFully remote (US). $235k–$280k base + equity."
+    },
+    {
+      "slug": "quark-security",
+      "title": "Security Engineer (AppSec)",
+      "company": "Quark Systems",
+      "location": "Washington, DC (Hybrid)",
+      "raw_description": "Quark Systems provides compliance platforms for federal and state agencies. Security is not a specialty here — it's the product.\n\nWe're hiring an AppSec engineer to review and harden our internal service fleet.\n\nWhat you'll do\n- Threat-model new and existing Python and Go services.\n- Lead secure-SDLC rollout: automated SAST, dependency scanning, secrets detection.\n- Run internal pen tests and facilitate external assessments.\n\nRequirements\n- 4+ years in application or product security.\n- Strong Python (and ideally Go) reading and reviewing skills.\n- Familiarity with OWASP Top 10 and modern cloud-native threat models.\n- US citizenship; ability to obtain a Public Trust clearance.\n\nNice to have\n- Offensive security certifications (OSCP, GPEN).\n- Experience with SBOM tooling.\n\nLocation: Washington, DC (hybrid). $165k–$200k + clearance bonus."
+    },
+    {
+      "slug": "hummingbird-analytics",
+      "title": "Analytics Engineer",
+      "company": "Hummingbird Data",
+      "location": "Remote (US / Canada)",
+      "raw_description": "Hummingbird Data is a 25-person analytics consultancy for Series A–C SaaS companies. Our clients depend on us to own their data stack end-to-end.\n\nRole\nJoin as Analytics Engineer #4. You'll own the modeling layer for several clients and set standards for the team.\n\nRequirements\n- 3+ years of production analytics-engineering experience.\n- Deep dbt fluency (including macros, tests, documentation).\n- Strong SQL on Snowflake, BigQuery, or Redshift.\n- Comfortable translating vague business questions into clear metrics.\n\nNice to have\n- Python for pipeline glue (Fivetran, Airbyte, custom connectors).\n- Client-facing experience; comfortable presenting to stakeholders.\n\nFully remote (US / Canada). Flat org, 4-day work weeks. $130k–$165k base."
+    }
+  ]
+}
