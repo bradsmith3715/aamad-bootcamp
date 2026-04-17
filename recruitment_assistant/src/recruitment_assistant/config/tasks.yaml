@@ -2,28 +2,26 @@
 # Source of truth: project-context/1.define/product-requirements-document.md
 #   §3 Task Orchestration (T1-T5) and §4 Functional Requirements (F-2 ... F-5).
 #
-# Sequential main pass at session start:
-#   sourcing_task -> parsing_task -> ranking_task
-# Runs on-demand after the candidate picks a role (PRD §3 T4):
-#   coaching_task
+# Sequential main pass: sourcing_task -> parsing_task -> ranking_task -> coaching_task
 #
 # Kickoff inputs (bound at crew.kickoff time):
-#   resume_text    - full resume content (text/markdown), validated upstream.
-#   intent_prompt  - short career-intent prompt from the candidate.
-#   selected_job_id - only required for coaching_task.
+#   resume_text      - the candidate's resume (text/markdown)
+#   intent_prompt    - short career-intent prompt from the candidate
+#   selected_job_id  - id of the role to coach on; the sentinel "top_ranked"
+#                      means "coach on whichever role ranks first"
 #
-# Output schemas (Pydantic classes wired in crew.py via output_pydantic):
+# Output schemas (bound via output_pydantic in crew.py):
 #   sourcing_task -> JobList
-#   parsing_task  -> ParsedBundle { parsed_resume, parsed_jobs[] }
+#   parsing_task  -> ParsedBundle
 #   ranking_task  -> RankedJobList
 #   coaching_task -> CoachPlan
 #
-# Tool bindings and output_pydantic references live in crew.py, not in this YAML.
+# EACH task explicitly mandates tool invocation. Agents must not answer from
+# prior knowledge; every record in the final output must trace to a tool call.
 
 sourcing_task:
   description: >
-    Discover 10 to 25 live tech job postings relevant to the candidate.
-    You are given the candidate's resume and a short career-intent prompt:
+    Discover 10 to 25 real tech job postings relevant to the candidate.
 
     Resume:
     {resume_text}
@@ -31,110 +29,150 @@ sourcing_task:
     Career intent:
     {intent_prompt}
 
-    Pull only from permitted sources: the configured public job feeds and
-    the seeded demo corpus. Never scrape a source that disallows automated
-    access. For each posting capture: title, company, location (if stated),
-    canonical URL, source identifier, and the raw job description text.
-    If the configured live feed is unreachable or returns no useful roles,
-    fall back to the demo corpus and flag the result as degraded rather
-    than failing the run. Prefer a tighter, cleaner shortlist over a wide,
-    noisy one.
+    YOU MUST use the tools bound to you to discover jobs. Do not answer
+    from prior knowledge. Do not invent companies, URLs, or descriptions.
+
+    Procedure:
+    1. Invoke the `job_feed_fetcher` tool with intent_prompt set to the
+       candidate's career intent above and limit set to 20.
+    2. Parse the tool's JSON response:
+       - If response.status is "ok" or "ok_unfiltered", use response.jobs
+         as your result.
+       - If response.status is "degraded", proceed to step 3.
+    3. Invoke the `demo_corpus_reader` tool with the same intent_prompt
+       and limit=20. Use its response.jobs as your result.
+
+    Return a JobList whose `jobs` field contains the Job records exactly
+    as returned by whichever tool succeeded. Preserve id, title, company,
+    location, url, source, and raw_description verbatim. Do not rewrite
+    any field, do not drop jobs, do not add jobs.
   expected_output: >
-    A JobList containing 10 to 25 Job records. Each Job has a stable id,
-    title, company, location (nullable), canonical url, source, and the
-    raw_description text exactly as retrieved. No fabricated fields.
+    A JobList containing the Job records produced by either
+    job_feed_fetcher (preferred) or demo_corpus_reader (fallback). Each
+    Job carries the exact id, title, company, location, url, source, and
+    raw_description returned by the tool. No fabricated records.
   agent: sourcing_agent
 
 parsing_task:
   description: >
-    Convert the candidate's resume and each sourced job description into
-    strict structured records suitable for downstream ranking.
+    Convert the candidate's resume and every sourced job description
+    into strict structured records.
 
-    For the resume, extract: skills, experience items (title, company,
-    start/end, bullet spans), education, and an inferred total years of
-    experience (nullable if unclear).
+    YOU MUST use the `llm_structured_extract` tool for every document.
+    Do not produce ParsedResume or ParsedJob records from memory or
+    from the task description.
 
-    For each job description, extract: skills, must-have requirements,
-    nice-to-have requirements, inferred seniority, and a minimum years of
-    experience (nullable if unstated). Every must-have and nice-to-have
-    requirement must carry the verbatim span from the JD where it was
-    found. If extraction for a single JD fails or is low-confidence,
-    retain the JD with parse_status="degraded" and skip its downstream
-    ranking rather than fail the whole task. Never invent values: prefer
-    "unknown" or null over guessing.
+    Procedure:
+    1. Invoke `llm_structured_extract` exactly ONCE with:
+         content = the full resume text below
+         target  = "resume"
+       Capture the returned `data` field as the ParsedResume for the
+       bundle.
+
+       Resume text:
+       {resume_text}
+
+    2. For EVERY Job in the JobList produced by the sourcing_task,
+       invoke `llm_structured_extract` with:
+         content = that Job's raw_description
+         target  = "job"
+         job_id  = that Job's id
+       Capture each returned `data` field as a ParsedJob and add it to
+       the bundle. Process every Job in the list; do not skip any.
+
+    3. If a single tool call returns status="degraded", include a
+       ParsedJob for that Job with parse_status="degraded", the correct
+       job_id, and empty lists for skills / must_have / nice_to_have
+       rather than fabricating values.
+
+    Return a ParsedBundle containing the single ParsedResume and the
+    full list of ParsedJob records (one per input Job).
   expected_output: >
-    A ParsedBundle containing one ParsedResume and a list of ParsedJob
-    records (one per input Job). ParsedJob.parse_status is "ok" or
-    "degraded". Every extracted requirement carries a verbatim span from
-    the source text. No hallucinated skills or experience.
+    A ParsedBundle with one ParsedResume and one ParsedJob per input
+    Job (keyed by job_id). ParsedJob.parse_status is "ok" or "degraded".
+    Every extracted field came from the llm_structured_extract tool;
+    none were invented.
   agent: parser_agent
   context:
     - sourcing_task
 
 ranking_task:
   description: >
-    For every ParsedJob with parse_status="ok", produce a multi-criterion
-    fit breakdown against the ParsedResume. For each JD:
+    Produce a multi-criterion fit breakdown for every ParsedJob whose
+    parse_status is "ok".
 
-    - Derive a list of explicit criteria from the JD's must_have and
-      nice_to_have requirements. At least 90% of the must_have items must
-      appear as explicit criteria.
-    - For each criterion, assign a status of "matched", "partial", or
-      "missing" and cite (a) the required_in_jd span and (b) the
-      evidence_in_resume span from ParsedResume, or null evidence if the
-      criterion is missing.
-    - Produce an overall_score between 0.0 and 1.0 reflecting the
-      breakdown. Never collapse the reasoning into an opaque number; the
-      per-criterion breakdown is the product.
-    - On equal overall_score, break ties deterministically by the job id
-      (lexicographic ascending) so the ordering is reproducible.
+    YOU MUST use the `llm_structured_rank` tool for every ranking.
+    Do not produce RankedJob records from memory or from the task
+    description.
 
-    Skip any job whose parse_status is "degraded" and note the skip in
-    the output rather than dropping it silently.
+    Procedure:
+    1. Serialize the ParsedResume from the parsing_task output as JSON.
+       This is your parsed_resume_json argument for every tool call.
+    2. For EACH ParsedJob in the parsing_task output whose parse_status
+       is "ok":
+       - Serialize the ParsedJob as JSON (parsed_job_json).
+       - Invoke `llm_structured_rank` with parsed_resume_json and
+         parsed_job_json.
+       - If the tool response status is "ok", capture response.data as
+         a RankedJob. If the status is "degraded" with code
+         "job-parse-degraded", add the job_id to skipped_job_ids instead.
+    3. Collect the job_id of every ParsedJob whose parse_status is
+       "degraded" into skipped_job_ids as well.
+    4. Sort the RankedJob list by overall_score descending. Break ties
+       on equal overall_score by job_id ascending (lexicographic).
+
+    Return a RankedJobList with the sorted ranked_jobs and the
+    skipped_job_ids list.
   expected_output: >
-    A RankedJobList sorted by overall_score descending, with deterministic
-    tiebreaks. Each RankedJob has a non-empty criteria list where every
-    criterion names a source span from the JD and either cites a resume
-    span or is explicitly marked missing. A short reasoning_summary
-    written in candidate-friendly language accompanies each RankedJob.
+    A RankedJobList containing one RankedJob per "ok" ParsedJob, sorted
+    by overall_score descending with deterministic tie-breaks. Every
+    RankedJob came from a llm_structured_rank call; none were invented.
+    skipped_job_ids contains the job_ids of any degraded ParsedJobs.
   agent: ranking_agent
   context:
     - parsing_task
 
-# coaching_task runs on-demand after the candidate picks a role (PRD §3 T4).
-# It is not part of the sequential main pass and does not trigger at kickoff.
-# crew.py invokes it separately with selected_job_id bound at call time.
 coaching_task:
   description: >
-    Produce evidence-grounded coaching for the role the candidate selected:
+    Produce evidence-grounded coaching for the role the candidate
+    selected.
 
-    Selected job id: {selected_job_id}
+    YOU MUST use the `llm_structured_coach` tool. Do not produce a
+    CoachPlan from memory or from the task description.
 
-    Using the candidate's ParsedResume, the selected RankedJob, and the
-    raw resume text for span resolution, produce two strictly separated
-    outputs:
+    Inputs:
+      Raw resume text:
+        {resume_text}
+      Selected job id:
+        {selected_job_id}
 
-    1. edits: rewrites of existing resume content that strengthen the
-       candidate's fit for this role. Every edit must target an existing
-       resume section and carry a non-null evidence_span pointing to the
-       verbatim resume text being edited. Never invent experience. If the
-       candidate does not have a skill, do not write it into the resume.
+    Procedure:
+    1. Determine the target RankedJob from the ranking_task output:
+       - If selected_job_id is "top_ranked" or empty, use the FIRST
+         RankedJob in RankedJobList.ranked_jobs (already sorted).
+       - Otherwise, find the RankedJob in RankedJobList.ranked_jobs
+         whose job_id equals selected_job_id.
+       - If the ranked_jobs list is empty, return an empty CoachPlan
+         with job_id=selected_job_id, edits=[], gaps=[].
+    2. Serialize the ParsedResume from the parsing_task output as JSON
+       (parsed_resume_json).
+    3. Serialize the target RankedJob as JSON (ranked_job_json).
+    4. Invoke `llm_structured_coach` with:
+         parsed_resume_json
+         ranked_job_json
+         resume_text = the full resume text above
+    5. Return the tool's response.data as your CoachPlan. Trust the
+       tool's output; do not re-edit the plan. The tool has already
+       enforced the schema and grounding invariants (every edit has a
+       non-null evidence_span; gaps are kept strictly separate).
 
-    2. gaps: skills or experience the candidate lacks for this role,
-       labeled as gaps and kept entirely separate from edits. Each gap
-       includes a short why_it_matters explanation and an optional
-       learn_path_hint.
-
-    Gaps must never appear as edits and edits must never introduce skills
-    from the gaps list. The schema enforces non-null evidence_span on
-    every edit; an edit without evidence must be dropped rather than
-    fabricated.
+    Return the CoachPlan exactly as the tool produced it.
   expected_output: >
-    A CoachPlan for the selected job id with two lists: edits and gaps.
-    Every edits[] item has target_section, target_span (the existing
-    resume text), suggested_text, a non-null evidence_span, and a short
-    rationale. Every gaps[] item has skill, why_it_matters, and an
-    optional learn_path_hint. No unlabeled invented experience.
+    A CoachPlan with job_id set to the target role's id, a list of
+    evidence-grounded edits (each with a non-null evidence_span that
+    is verbatim in the resume), and a separate list of gaps. Every
+    edit came from the llm_structured_coach tool; no edits were
+    produced from memory or re-edited afterward.
   agent: coach_agent
   context:
     - ranking_task
