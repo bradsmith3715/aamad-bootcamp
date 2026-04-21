@@ -18,6 +18,7 @@ from recruitment_assistant.tools import (
     LLMStructuredCoachTool,
     LLMStructuredExtractTool,
     LLMStructuredRankTool,
+    RemoteOkFetcherTool,
     ResumeReaderTool,
 )
 
@@ -94,10 +95,16 @@ class RecruitmentAssistant():
     def sourcing_agent(self) -> Agent:
         # Tools per PRD §3 Sourcing Agent:
         #   - job_feed_fetcher  : live HN "Who is hiring?" feed (ToS-safe).
-        #   - demo_corpus_reader: seeded 12-JD fallback corpus (SAD §6).
+        #   - remote_ok_fetcher : live RemoteOK public API feed.
+        #   - demo_corpus_reader: seeded fallback corpus (SAD §6), only
+        #                         used when BOTH live feeds return degraded.
         return Agent(
             config=self.agents_config['sourcing_agent'],  # type: ignore[index]
-            tools=[JobFeedFetcherTool(), DemoCorpusReaderTool()],
+            tools=[
+                JobFeedFetcherTool(),
+                RemoteOkFetcherTool(),
+                DemoCorpusReaderTool(),
+            ],
             verbose=True,
             llm=self._llm,
             max_iter=6,

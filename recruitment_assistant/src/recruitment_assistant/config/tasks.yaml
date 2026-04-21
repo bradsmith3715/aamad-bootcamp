@@ -42,41 +42,55 @@ sourcing_task:
     Career intent:
     {intent_prompt}
 
-    MANDATE: You MUST obtain jobs by calling `job_feed_fetcher` and, if
-    that returns degraded, `demo_corpus_reader`. Your FIRST action in
-    this task MUST be `Action: job_feed_fetcher`. Do NOT emit a Final
-    Answer before observing at least one tool result. Do NOT invent
-    companies, titles, URLs, or descriptions.
+    MANDATE: You MUST obtain jobs by calling BOTH live-feed tools,
+    `job_feed_fetcher` and `remote_ok_fetcher`, and ONLY fall back to
+    `demo_corpus_reader` if both live feeds return status="degraded".
+    Your FIRST action in this task MUST be `Action: job_feed_fetcher`.
+    Do NOT emit a Final Answer before observing at least two tool
+    results. Do NOT invent companies, titles, URLs, or descriptions.
 
     Procedure:
     1. Invoke `job_feed_fetcher` with intent_prompt set to the career
-       intent above and limit=12.
-    2. Parse the tool's JSON response:
-       - If response.status is "ok" or "ok_unfiltered", use response.jobs
-         as your result and STOP. Do not call demo_corpus_reader.
-       - If response.status is "degraded", proceed to step 3.
-    3. Invoke `demo_corpus_reader` with the same intent_prompt and
-       limit=12. Use its response.jobs as your result regardless of its
-       status (a degraded demo corpus still returns its jobs field).
+       intent above and limit=10. If response.status is "ok" or
+       "ok_unfiltered", capture response.jobs as hn_jobs; otherwise
+       capture an empty list as hn_jobs.
+    2. Invoke `remote_ok_fetcher` with the same intent_prompt and
+       limit=10. If response.status is "ok" or "ok_unfiltered",
+       capture response.jobs as ro_jobs; otherwise capture an empty
+       list as ro_jobs.
+    3. Concatenate the two captured lists in order: hn_jobs first,
+       then ro_jobs. Preserve every Job record VERBATIM. Do not
+       dedupe - each tool hashes its own IDs with a source prefix so
+       collisions across sources will not occur.
+    4. If the combined list is non-empty, that is your result and you
+       STOP. Do NOT call demo_corpus_reader.
+    5. If BOTH live responses had status="degraded" (combined list is
+       empty), invoke `demo_corpus_reader` with the same intent_prompt
+       and limit=12. Use its response.jobs as your result regardless
+       of its status (a degraded demo corpus still returns its jobs
+       field).
 
-    Return a JobList whose `jobs` field contains the Job records exactly
-    as returned by whichever tool you last called. Preserve id, title,
-    company, location, url, source, and raw_description VERBATIM. Do
-    not rewrite, summarize, translate, or reformat any field. Do not
-    drop jobs. Do not add jobs. Do not merge duplicates yourself.
+    Return a JobList whose `jobs` field contains the Job records
+    exactly as returned by whichever tools succeeded. Preserve id,
+    title, company, location, url, source, and raw_description
+    VERBATIM. Do not rewrite, summarize, translate, or reformat any
+    field. Do not drop jobs. Do not add jobs. Do not merge duplicates
+    yourself.
 
-    An empty `jobs` list is valid ONLY if both tools were called and
-    both returned zero jobs. If you have not called at least one tool,
-    an empty result is an invalid output.
+    An empty `jobs` list is valid ONLY if all three tools were called
+    and all returned zero jobs. If you have not called at least
+    `job_feed_fetcher` and `remote_ok_fetcher`, an empty result is an
+    invalid output.
   expected_output: >
     A single JSON object matching the JobList schema:
       {"jobs": [{"id": "...", "title": "...", "company": "...",
                   "location": "...", "url": "...", "source": "...",
                   "raw_description": "..."}, ...]}
     Each Job carries the EXACT id, title, company, location, url,
-    source, and raw_description returned by the tool. Zero fabricated
-    records; every Job traces to a specific tool call made during this
-    run. Return the JSON object alone - no prose, no markdown fences.
+    source (e.g., "hn_whos_hiring", "remote_ok", "demo_corpus"), and
+    raw_description returned by the tool. Zero fabricated records;
+    every Job traces to a specific tool call made during this run.
+    Return the JSON object alone - no prose, no markdown fences.
   agent: sourcing_agent
 
 parsing_task:

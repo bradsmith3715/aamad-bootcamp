@@ -1,0 +1,56 @@
+Bradley R. Smith
+
+PROFESSIONAL EXPERIENCE
+Senior Performance Analyst (November 2021 – Present)
+Assistant Director of Sports Analytics (August 2016 – March 2018)
+Nebraska Athletics Performance Lab, Lincoln, NE
+• Baseball Performance Lead: Oversee research and reporting efforts across analytics and sport
+science including workload monitoring, fatigue monitoring and biomechanics assessments.
+Organize and lead performance team meetings, collaborating with athletic medicine, strength and
+conditioning, sport psychology and nutrition.
+• Technical Advisor: Performance team representative for Artificial Intelligence Task Force
+vetting new technologies and developing plans for implementation.
+Player Development Analyst (March 2018 – November 2021)
+New York Yankees, Tampa, FL
+• Staff Education/Development: Established and managed an online education platform servicing
+the entire Baseball Operations (New York), Player Development (Tampa) and amateur and pro
+scouting departments. Assisted directors and coordinators in developing and delivering course
+content. Led initiative designed to evaluate coaching performance and align organizational
+resources and philosophies to develop coaches at all levels.
+• Player Evaluation: Utilized internal metrics and organizational philosophies to determine
+industry value for players within our organization. Assisted in decision-making process regarding
+free agency, rule 5 status, prospect rankings and roster construction.
+• Player Development: Organized and led initial rollout of structured end-of-year meetings with
+players across all levels (R-AAA). Provided objectives with metric focused messaging while
+collaborating with coordinators, affiliate coaches and other support staff in developing off-season
+training plans.
+• Advance Scouting: Supported the efforts of the quantitative analysis and advance reporting
+teams in preparing presentations and reports for major league coaching staff prior to each playoff
+series. Spent 6 weeks at AA affiliate covering role of Advance Scouting Analyst preparing
+material for use in advance meetings and in-game.
+Instructor, (September 2017 – Present)
+Northwestern University School of Professional Studies, Chicago, IL
+Master of Science in Data Science Program
+Research Assistant (August 2016 – March 2018)
+Brain, Emotion and Education Lab
+University of Nebraska-Lincoln, Lincoln, NE
+Assistant Baseball Coach (August 2011 – August 2016)
+University of Nebraska Baseball, Lincoln, NE
+
+EDUCATION
+Ph.D. Psychological Studies in Education (Dec 2024) University of Nebraska-Lincoln, Lincoln, NE
+Specialization: Quantitative, Qualitative, and Psychometric Methods
+Dissertation: “Examining the Use of Problem Transformation Methods in Multi-Target Regression”
+M.S. Statistics (May 2013)
+University of Nebraska-Lincoln, Lincoln, NE
+M.S. Mathematics (May 2010)
+Pittsburg State University, Pittsburg, KS
+B.S. Mathematics (May 2006)
+Pittsburg State University, Pittsburg, KS
+
+TECHNOLOGY
+Code: R, Python, SQL
+Data Visualization: Tableau, PowerBI, Shiny
+Sport Specific: Catapult, VALD, Hawk-Eye, Trackman, Rapsodo, Edgertronic, Yakertech, Blast Motion
+
+
