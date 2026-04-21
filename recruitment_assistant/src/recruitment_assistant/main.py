@@ -3,6 +3,7 @@ import sys
 import warnings
 
 from recruitment_assistant.crew import RecruitmentAssistant
+from recruitment_assistant.tools import register_resume_text
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 
@@ -12,9 +13,13 @@ warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 # Inputs below are interpolated into the task descriptions in
 # src/recruitment_assistant/config/tasks.yaml:
 #
-#   {resume_text}     -> sourcing_task, parsing_task, coaching_task
 #   {intent_prompt}   -> sourcing_task
 #   {selected_job_id} -> coaching_task (PRD §3 T4)
+#
+# The resume text is NOT interpolated. It is registered with the
+# ResumeReaderTool before kickoff; the Parser and Coach agents retrieve
+# it by calling the tool, which forces them to invoke at least one tool
+# before producing structured output about the resume.
 #
 # Replace the values below with whatever you want to test against. For the
 # bootcamp single-pass demo, selected_job_id is a sentinel ("top_ranked")
@@ -43,7 +48,6 @@ SAMPLE_INTENT = "Remote Python platform or backend roles, mid-level, any US time
 
 def _default_inputs() -> dict:
     return {
-        "resume_text": SAMPLE_RESUME,
         "intent_prompt": SAMPLE_INTENT,
         "selected_job_id": "top_ranked",
     }
@@ -51,6 +55,7 @@ def _default_inputs() -> dict:
 
 def run():
     """Run the crew."""
+    register_resume_text(SAMPLE_RESUME)
     try:
         RecruitmentAssistant().crew().kickoff(inputs=_default_inputs())
     except Exception as e:
@@ -59,6 +64,7 @@ def run():
 
 def train():
     """Train the crew for a given number of iterations."""
+    register_resume_text(SAMPLE_RESUME)
     try:
         RecruitmentAssistant().crew().train(
             n_iterations=int(sys.argv[1]),
@@ -71,6 +77,7 @@ def train():
 
 def replay():
     """Replay the crew execution from a specific task."""
+    register_resume_text(SAMPLE_RESUME)
     try:
         RecruitmentAssistant().crew().replay(task_id=sys.argv[1])
     except Exception as e:
@@ -79,6 +86,7 @@ def replay():
 
 def test():
     """Test the crew execution and return the results."""
+    register_resume_text(SAMPLE_RESUME)
     try:
         RecruitmentAssistant().crew().test(
             n_iterations=int(sys.argv[1]),
@@ -110,6 +118,9 @@ def run_with_trigger():
     inputs = _default_inputs()
     inputs["crewai_trigger_payload"] = trigger_payload
     inputs.update({k: v for k, v in trigger_payload.items() if k in _default_inputs()})
+
+    resume_text = trigger_payload.get("resume_text", SAMPLE_RESUME)
+    register_resume_text(resume_text)
 
     try:
         return RecruitmentAssistant().crew().kickoff(inputs=inputs)
