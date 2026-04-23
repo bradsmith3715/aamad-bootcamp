@@ -219,7 +219,7 @@
 
 - **Immediate Next Steps (≤48 hours)**
   - Hand this MRD to @system-arch for SAD derivation.
-  - @product-mgr to draft PRD in `project-context/1.define/PRD.md` building on the MVP scope defined here.
+  - @product-mgr to draft PRD in `project-context/1.define/prd.md` building on the MVP scope defined here.
   - Resolve the Open Questions below that are cheap to close (pricing anchors, direct-competitor scan).
 - **Short-term Priorities (30 days)**
   - Build MVP per SAD: 4-agent CrewAI crew + minimal chat frontend + artifact export.
@@ -277,7 +277,7 @@
 - **Persona:** @product-mgr
 - **Action:** authored initial MRD for Origin AI from idea.md
 - **Inputs read:** `project-context/0.idea/idea.md`, `.cursor/templates/mr-template.md`, `.claude/rules/aamad-core.md`, `.claude/rules/adapter-crewai.md`, `AGENTS.md`, `.claude/agents/product-mgr.md`
-- **Output:** `project-context/1.define/MRD.md` (this file)
+- **Output:** `project-context/1.define/mrd.md` (this file)
 - **Model / tooling:** authored via Claude Code main thread (model: claude-opus-4-7[1m]); no external web search performed in this pass — live market validation deferred to Open Questions.
 - **Temperature / determinism:** N/A (single-pass authoring, not a crew run); crew runs for PRD/SAD will honor adapter-crewai rule of temperature ≤ 0.4.
 - **Prohibited actions attempted:** none.
