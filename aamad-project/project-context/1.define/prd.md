@@ -27,7 +27,7 @@ Differentiators vs. existing tools (per MRD §5):
 
 ### Strategic Rationale
 
-Multi-agent architecture is warranted (not incidental) because the workflow decomposes cleanly into four single-responsibility roles with deterministic hand-offs: conversational discovery, structured document synthesis, stack archetype matching, and grounded repo retrieval. Each role has different tool needs, different failure modes, and different quality gates — exactly the pattern CrewAI optimizes. A monolithic prompt would conflate these concerns, making both quality and determinism harder to enforce.
+Multi-agent architecture is warranted (not incidental) because the workflow decomposes cleanly into five single-responsibility roles with deterministic hand-offs: conversational discovery, structured document synthesis, stack archetype matching, grounded repo retrieval, plus a dedicated orchestrator agent that owns session-level responsibilities (input initialization, HITL gate enforcement, final build-plan consolidation, Prompt-Trace + Audit capture). Each role has different tool needs, different failure modes, and different quality gates — exactly the pattern CrewAI optimizes. A monolithic prompt would conflate these concerns, making both quality and determinism harder to enforce.
 
 Business case is deferred: the MVP is a bootcamp learning artifact and a proof-of-concept. MVP success is measured by artifact quality and task completion rate, not revenue. Monetization considerations (MRD §5) anchor at the $10–$20/mo individual-dev tooling band and are out of scope for Phase 1.
 
@@ -85,20 +85,21 @@ Pricing benchmarks ($10–$20/mo individual tier) are informational. MVP is unpr
 
 - **Framework:** CrewAI. Adapter rules: `.claude/rules/adapter-crewai.md`.
 - **Process:** Sequential (deterministic, auditable). Hierarchical is not used in MVP (per adapter rule: hierarchical only when required by SAD).
-- **Orchestration:** Four agents executing in order. Two human-in-the-loop gates: after discovery, after MRD/PRD synthesis.
+- **Orchestration:** Five agents. Four functional agents (A1–A4) plus a dedicated orchestrator agent (A5) that bookends the sequence. Two human-in-the-loop gates: after discovery, after MRD/PRD synthesis. The orchestrator owns session bookkeeping, HITL gate handoff to the HTTP layer, and final build-plan consolidation; it does not use hierarchical delegation (see SAD ADR-6).
 - **Determinism settings (MVP-wide, per adapter rules):**
   - `memory = False`
-  - `allow_delegation = False`
+  - `allow_delegation = False` for all agents including A5 orchestrator (no hierarchical delegation in MVP)
   - `verbose = False` (production)
   - `respect_context_window = True`
   - `max_iter ≤ 12`
   - `max_retry_limit ≥ 2`
   - `temperature ≤ 0.4` for all artifact-generation tasks
-- **LLM provider / model:** Anthropic Claude via LiteLLM (to be confirmed by @system-arch). Provider prefix `anthropic/` required on Claude 4.x model IDs.
+- **LLM provider / model (user-confirmed 2026-04-23):** Claude API (Anthropic) via CrewAI's native LiteLLM layer. Provider prefix `anthropic/` required on Claude 4.x model IDs. Per-agent model selection (cheaper model for A1 conversation vs. frontier model for A2 artifact generation) remains an @system-arch / @backend-eng call in the SAD.
+- **Runtime stack (user-confirmed 2026-04-23):** single Python service using **FastHTML + HTMX**. This replaces the earlier FastAPI + Next.js/assistant-ui split — one framework owns both HTTP endpoints and server-rendered HTML, with HTMX handling client-side interactivity via partial-page swaps.
 
 ### Core Agent Definitions
 
-Four agents, each with a single responsibility. Declared adapter-neutrally; YAML binding and exact tool wiring are @system-arch / @backend-eng's scope.
+Five agents, each with a single responsibility. Declared adapter-neutrally; YAML binding and exact tool wiring are @system-arch / @backend-eng's scope.
 
 **Agent A1: Discovery Agent**
 - role: "Solo-Developer Project Discovery Interviewer"
@@ -136,8 +137,14 @@ Four agents, each with a single responsibility. Declared adapter-neutrally; YAML
 - delegation: False.
 - human-in-the-loop: no.
 
-**Consolidation (non-agent task): Build Plan Assembler**
-- After A2–A4 complete, a deterministic task assembles the final build plan (milestones, first-week tasks, references). This may be a fifth agent or a template-fill task at @system-arch's discretion.
+**Agent A5: Orchestrator Agent**
+- role: "Session Orchestrator for Origin AI Crew"
+- goal: "Own session-level concerns that sit outside any single functional agent: (a) initialize session state and structure the user's raw idea into a context object consumed by A1; (b) consolidate A1–A4 outputs into the final build plan (milestones, first-week tasks, cross-references); (c) capture Prompt Trace and append Audit blocks per adapter-crewai; (d) emit Halt-and-Report on guardrail or budget failures."
+- backstory: "Experienced crew lead with a bias for deterministic, auditable workflows. Treats session state and audit trails as load-bearing, not decorative."
+- tools: `artifact_writer` (for the final build plan), Audit/Prompt-Trace hooks (internal).
+- memory: False.
+- delegation: False. (No hierarchical manager-mode in MVP; orchestration is expressed as T0 and T5 tasks in a sequential process — see SAD ADR-6.)
+- human-in-the-loop: no directly; the orchestrator signals HITL gate pauses to the HTTP layer, which resumes the crew after user approval.
 
 ### Integration Requirements
 
@@ -148,7 +155,7 @@ Four agents, each with a single responsibility. Declared adapter-neutrally; YAML
 
 ### Infrastructure Specifications
 
-- **Compute:** single containerized backend (CrewAI + API layer) + minimal web frontend.
+- **Compute:** single containerized Python service — FastHTML + HTMX + CrewAI in one process. No separate frontend container, no separate backend container.
 - **Deploy target:** any container host (Render, Fly.io, Railway, or local Docker). Exact target selected by @system-arch / @project-mgr.
 - **Monitoring:** structured JSON logs to stdout. Per-agent lifecycle events, token usage, latency. No external observability stack in MVP.
 - **Security:** API keys loaded from environment variables only. `.env.example` required. Prompt-injection sanitization on user input (per adapter-crewai rules).
@@ -215,11 +222,11 @@ Features traced to MRD §3 user journey.
 **F7 — Minimal Chat Interface**
 - User story: As a solo developer, I use a simple chat UI to complete the end-to-end flow without any configuration.
 - Acceptance criteria:
-  - Single-page web UI: chat pane + saved-artifact sidebar.
-  - Streaming agent responses.
+  - Single web page served by FastHTML: chat pane + saved-artifact sidebar. UI is server-rendered HTML; client-side interactivity (message send, HITL gate approval, artifact download) is driven by HTMX partial-swap requests, not a JavaScript SPA.
+  - Streaming agent responses delivered as incrementally-rendered HTML fragments via HTMX's SSE extension (`hx-ext="sse"`, `sse-connect`, `sse-swap`).
   - No sign-up, no auth, no settings in MVP.
   - Session resets on page reload (no persistence in MVP — see F-deferred list).
-- Traceability: MRD §3 interface requirements.
+- Traceability: MRD §3 interface requirements; SAD ADR-2 (FastHTML + HTMX), ADR-7 (SSE-over-HTMX streaming).
 
 **F8 — Traceability & Audit**
 - User story: As a solo developer, I can see which discovery answer produced which recommendation so I can trust and edit the output.
@@ -278,18 +285,19 @@ Features traced to MRD §3 user journey.
 
 ### Interface Requirements
 
-- Single-page web chat UI. Chat pane + saved-artifact sidebar. Mobile-responsive but not mobile-first in MVP.
-- Accessibility: semantic HTML, keyboard navigation for chat input + sidebar. WCAG AA nice-to-have; not a blocker for MVP.
+- Single web page served by FastHTML, augmented with HTMX for interactivity. Chat pane + saved-artifact sidebar. Mobile-responsive but not mobile-first in MVP.
+- Server-rendered HTML; partial swaps driven by HTMX (no JavaScript SPA, no client-side routing, no React/Next.js dependency).
+- Accessibility: semantic HTML, keyboard navigation for chat input + sidebar. WCAG AA nice-to-have; not a blocker for MVP. Server-rendered HTML makes the accessibility baseline easier to hold than a JS-heavy SPA.
 - No settings panel, no dark-mode toggle, no onboarding — defer anything that isn't the golden path.
 
 ### Agent Interaction Design
 
-- **Human-in-the-loop gates (2 in MVP):**
+- **Human-in-the-loop gates (2 in MVP):** each gate renders in the chat as an HTMX-driven approval card (Approve / Request changes). Clicking issues an `hx-post` back to the server; the server resumes the crew and streams the next task's output.
   1. After discovery (F2): user approves scope summary before F3 runs.
   2. After artifact synthesis (F3): user approves drafts before F4/F5 run.
-- **Streaming:** agent output streams in real-time; user sees progress.
-- **Error handling:** user-visible errors are plain English. On any Halt-and-Report, the UI offers "restart" and shows which stage failed.
-- **Transparency:** each generated section renders with a "sourced from: [discovery answer]" hover/expand affordance (F8).
+- **Streaming:** agent output streams in real-time via HTMX's SSE extension; HTML fragments are swapped into the chat as they arrive. The user sees progress without the server having to re-render the full page.
+- **Error handling:** user-visible errors are plain English, rendered as HTML fragments into an error region. On any Halt-and-Report, the UI offers "restart" and shows which stage failed.
+- **Transparency:** each generated section renders with a "sourced from: [discovery answer]" affordance (F8), implemented as a collapsible HTMX-controlled region.
 
 ---
 
@@ -320,8 +328,8 @@ Features traced to MRD §3 user journey.
 
 **Phase 1 — MVP (in scope).**
 - F1–F8 implemented end-to-end.
-- 4 agents configured via YAML under `config/` (adapter-crewai rule).
-- Single FastAPI/equivalent backend + minimal chat frontend.
+- 5 agents (A1 Discovery, A2 Synthesizer, A3 Stack Recommender, A4 Repo Finder, A5 Orchestrator) configured via YAML under `config/` (adapter-crewai rule).
+- Single Python service: FastHTML + HTMX + CrewAI in one process.
 - Deployed to a single container host OR runnable locally via Docker.
 - Ships when: golden path (idea → build plan) works with all F1–F8 acceptance criteria met; qa.md documents smoke test results.
 
@@ -385,24 +393,27 @@ Informational placeholders for future reference:
 
 ## Assumptions
 
-- Anthropic Claude via LiteLLM is the MVP LLM provider, with `anthropic/` prefix on model IDs (per prior-session memory). @system-arch to confirm or override.
+- **Confirmed 2026-04-23:** Claude API (Anthropic) via CrewAI's LiteLLM layer is the MVP LLM provider, with `anthropic/` prefix on model IDs. This is a direct user decision, no longer "to be confirmed."
+- **Confirmed 2026-04-23:** Runtime stack is a single Python service combining FastHTML, HTMX, and CrewAI. FastHTML serves HTTP endpoints and server-rendered HTML; HTMX drives client-side interactivity via partial swaps.
 - GitHub public search API is sufficient for F5 at MVP volumes; rate limits will be addressed by token-authenticated requests and graceful degradation.
 - A curated stack-archetype allow-list for F4 will be authored in-repo (no dependency on external corpus for MVP). Scope TBD between @product-mgr and @system-arch.
 - Users are solo developers who are comfortable with a chat UI and do not need onboarding in MVP.
 - Per-session cost budget of $0.50 is achievable with sensible token caps; to be instrumented in MVP.
 - Session state lives in process memory; no persistence required for MVP acceptance.
+- HTMX's SSE extension (`hx-ext="sse"`) is expressive enough to deliver the streaming chat UX without a JavaScript SPA. To be validated during Build phase; fallback is HTMX polling.
 
 ---
 
 ## Open Questions
 
-- **LLM model choice.** Exact model ID for A1 (conversation) vs. A2–A4 (artifact gen)? A smaller/cheaper model on A1 could reduce per-session cost materially. Owner: @system-arch.
+- ~~**LLM provider.**~~ **Resolved 2026-04-23:** Claude API via CrewAI/LiteLLM. Exact model IDs per agent (A1 cheap model vs. A2–A5 frontier) still open — owner: @system-arch / @backend-eng.
 - **Stack-archetype corpus.** Author from scratch, derive from "awesome" lists, or embed at runtime from a small curated JSON? Owner: @product-mgr + @system-arch.
-- **Session output directory.** Where do artifacts land (user-local download, server-side session dir, both)? Owner: @system-arch (affects frontend/backend contract).
-- **Human-in-the-loop UX.** How does the UI render the approval gates without feeling like a form? Owner: @frontend-eng in Phase 2.
+- **Session output directory.** Where do artifacts land (server-side session dir, served via HTMX download link, both)? Owner: @system-arch (revisited in SAD r2 given single-service architecture).
+- ~~**Human-in-the-loop UX.**~~ **Resolved 2026-04-23:** HITL gates render as HTMX-driven approval cards in the chat, `hx-post` on click. No longer deferred — this is MVP scope, not Phase 2.
 - **Prompt-injection test corpus.** What canned adversarial inputs will QA use to validate F1 sanitization? Owner: @qa-eng.
 - **Cost instrumentation.** Per-agent token accounting — capture in Audit block per adapter-crewai; confirm the logging shape with @backend-eng.
 - **F4 fallback.** If the approved scope doesn't cleanly match any archetype in the allow-list, what does A3 return? Proposed default: "best partial match + explicit caveat." Owner: @product-mgr.
+- **A5 Orchestrator's responsibility split.** How much of Prompt-Trace / Audit capture lives in the orchestrator agent (T0/T5 tasks) vs. the CrewAI `step_callback` / adapter hooks? Owner: @system-arch + @backend-eng.
 
 ---
 
@@ -420,3 +431,29 @@ Informational placeholders for future reference:
 - **Template headings check:** Sections 1–9 + QA Checklist present. Sources / Assumptions / Open Questions / Audit present per aamad-core.
 - **No code fences around raw template content.** Confirmed.
 - **Handoff:** ready for @system-arch to derive SAD and SFS from this PRD + MRD.
+
+### Revision — 2026-04-23 (r2)
+
+- **Timestamp:** 2026-04-23
+- **Persona:** @product-mgr
+- **Action:** revised PRD to track the three user-confirmed decisions landed in `mrd.md` r2: (1) Claude API via CrewAI/LiteLLM with `anthropic/` prefix; (2) crew expanded to 5 agents with a dedicated A5 Orchestrator; (3) runtime stack consolidated to single FastHTML + HTMX Python service, replacing FastAPI + Next.js/assistant-ui.
+- **Sections updated:**
+  - §1 Strategic Rationale — "four" → "five" roles, orchestrator responsibilities enumerated.
+  - §3 CrewAI Framework Specifications — 5 agents, LLM provider confirmed, runtime stack added.
+  - §3 Core Agent Definitions — "Four agents" → "Five agents"; Build Plan Assembler non-agent task replaced with **Agent A5: Orchestrator Agent** (session bookkeeping + consolidation + Prompt-Trace/Audit capture).
+  - §3 Infrastructure Specifications — two-service topology collapsed to single Python service.
+  - §4 F7 Minimal Chat Interface — FastHTML-served, HTMX-driven partial swaps, SSE-via-HTMX for streaming.
+  - §6 Interface Requirements — server-rendered HTML, no SPA.
+  - §6 Agent Interaction Design — HITL gates as HTMX approval cards; streaming as HTMX SSE swaps.
+  - §8 Phase 1 MVP — 5 agents, single Python service.
+  - §Assumptions — LLM provider and runtime stack confirmed (no longer "to be confirmed"); added HTMX SSE expressiveness assumption.
+  - §Open Questions — resolved LLM provider choice (exact model IDs remain open); resolved HITL UX deferral (it's MVP scope now); added A5 orchestrator responsibility-split question.
+- **Traceability back to MRD r2:** every change in this revision is sourced from a decision recorded in `mrd.md` r2 Audit entry.
+- **Inputs read:** `project-context/1.define/prd.md` (prior revision), `project-context/1.define/mrd.md` (r2), `project-context/1.define/sad.md` (pre-r2 — to identify what downstream needs revision), `.claude/rules/aamad-core.md`, `.claude/rules/adapter-crewai.md`, `.claude/agents/product-mgr.md`.
+- **Output:** `project-context/1.define/prd.md` (this file, r2).
+- **Model / tooling:** revised via Claude Code main thread (model: claude-opus-4-7[1m]).
+- **Temperature / determinism:** N/A for authoring pass.
+- **Scope boundary:** PRD-level declarations updated; SAD-level architectural resolutions (ADR-1/2/5/6/7) deferred to @system-arch's SAD r2 pass in the same session.
+- **Prohibited actions attempted:** none. Original Audit preserved; revision appended per aamad-core append-only convention.
+- **Template headings check:** all PRD template sections and AAMAD required sections remain present.
+- **Handoff:** @system-arch to revise `sad.md` (ADR-1, ADR-2, ADR-5, ADR-6, ADR-7 at minimum; knock-on changes through §§3–6, Views, Traceability Matrix).

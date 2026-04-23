@@ -11,7 +11,7 @@
 
 **Market Opportunity.** Origin AI targets solo developers and indie hackers who start more projects than they finish, largely because the gap between a raw idea and an executable plan is high-friction. Adjacent categories — AI coding copilots (GitHub Copilot, Cursor), AI product/PM assistants (Notion AI, Linear, ChatPRD), and agentic dev tools (Devin, Replit Agent, Claude Code) — demonstrate sustained willingness-to-pay in the $10–$50/month range for individual-developer productivity. Origin AI occupies a narrow, defensible wedge upstream of coding assistants: **idea → validated scope → build plan**, before a line of code is written. Direct competitors exist (ChatPRD, PM-focused GPTs) but none appear to couple conversational discovery, MRD/PRD generation, tech-stack recommendation, and GitHub reference-repo surfacing into a single solo-dev-shaped workflow.
 
-**Technical Feasibility.** The MVP is highly feasible on CrewAI. The core workflow is a small, bounded multi-agent crew: a discovery agent (Socratic Q&A), a synthesis agent (MRD/PRD generation), a stack-recommendation agent (matches scope to known stack archetypes), and a repo-discovery agent (GitHub search API). All required primitives — LLM tool-use, structured output, GitHub/web search tools — are available in CrewAI today. Risks are deterministic-output quality, cost control on long conversations, and RAG freshness for stack recommendations, all mitigable with prompt design, caching, and token budgets.
+**Technical Feasibility.** The MVP is highly feasible on CrewAI. The core workflow is a bounded multi-agent crew of five: a discovery agent (Socratic Q&A), a synthesizer agent (MRD/PRD generation), a stack-recommender agent (matches scope to known archetypes), a repo-finder agent (GitHub search API), and a dedicated orchestrator agent that owns task sequencing, HITL gate enforcement, and Audit/Prompt-Trace capture. The runtime is a single Python service using **FastHTML + HTMX** — server-rendered UI and HTTP endpoints consolidated in one framework — backed by the **Claude API** (via CrewAI's LiteLLM layer with `anthropic/` model IDs) for all LLM calls. All required primitives are available today. Risks are deterministic-output quality, cost control on long conversations, and RAG freshness for stack recommendations, all mitigable with prompt design, caching, and token budgets.
 
 **Recommended Approach.** Build an MVP that proves the single claim: *"From a paragraph of idea to a structured build plan in under 15 minutes, with traceable reasoning the user can edit."* Monetization and scale considerations are deferred. Success of the MVP is measured by task completion rate (user reaches a saved build plan), time-to-plan, and qualitative plan usefulness, not by MAU or revenue.
 
@@ -49,7 +49,7 @@
 ## 2. Technical Feasibility & Requirements Analysis
 
 ### Key Insights
-- **CrewAI is a good fit.** The workflow decomposes cleanly into 3–4 single-responsibility agents with deterministic hand-offs; this is exactly the pattern CrewAI optimizes for.
+- **CrewAI is a good fit.** The workflow decomposes cleanly into five single-responsibility agents (discovery, synthesizer, stack-recommender, repo-finder, orchestrator) with deterministic hand-offs; this is exactly the pattern CrewAI optimizes for.
 - **Sequential process is sufficient for MVP.** Per adapter-crewai rules, prefer sequential for deterministic builds. Hierarchical/manager crews are unnecessary for MVP scope.
 - **Tool surface is small.** Required tools: (a) web/GitHub search (for reference repos and stack facts), (b) structured file writer (for MRD/PRD/build-plan artifacts), (c) optional RAG over a curated stack-archetype corpus. All three are low-risk.
 - **Determinism demands low temperature and strict expected_output schemas.** Temperature ≤ 0.4 per AAMAD rules; expected_output declares target path + required headings; guardrails validate structure before write.
@@ -63,9 +63,10 @@
 - AAMAD adapter rules — `.claude/rules/adapter-crewai.md` (project-local contract).
 
 ### Implications
-- Build the MVP as four agents (discovery, synthesizer, stack-recommender, repo-finder) + one orchestrator, all YAML-configured.
-- Enforce `temperature ≤ 0.4`, `memory=False`, `allow_delegation=False`, explicit tool whitelists per the adapter rules.
+- Build the MVP as five agents (discovery, synthesizer, stack-recommender, repo-finder, orchestrator), all YAML-configured. The orchestrator is its own agent (not an inline deterministic task) so task sequencing, HITL gate handling, and Prompt-Trace/Audit capture are a single owned responsibility.
+- Enforce `temperature ≤ 0.4`, `memory=False`, explicit tool whitelists per the adapter rules. Per adapter-crewai, `allow_delegation=False` for build personas; the orchestrator is the one role where delegation may be enabled, subject to @system-arch justification in the SAD.
 - Treat GitHub search as the highest-risk external dependency (rate limits, API key management) and bind it only to the repo-finder agent.
+- LLM calls use the Claude API (Anthropic) via CrewAI's native LiteLLM layer with the `anthropic/` model-ID prefix — no custom LLM wrapper required.
 
 ---
 
@@ -114,9 +115,9 @@
 ## 4. Production & Operations Requirements
 
 ### Deployment Architecture (MVP)
-- Single containerized backend (CrewAI + FastAPI) + lightweight web frontend.
-- Deploy target: any container host (Render, Fly.io, Railway, or local Docker for bootcamp). Per repo state, a Dockerfile already exists on this branch.
-- No database for MVP; session state in memory; artifacts written to `project-context/2.build/` (or equivalent runtime dir) and downloadable.
+- **Single Python service: FastHTML + HTMX.** FastHTML serves both the HTTP endpoints and server-rendered HTML pages; HTMX handles client-side interactivity (streaming updates, HITL gate approvals, artifact downloads) via partial-page swaps. This replaces the earlier two-service split (FastAPI backend + separate JS frontend) and eliminates the need for Next.js, assistant-ui, SSE plumbing, and a second runtime.
+- Deploy target: any container host (Render, Fly.io, Railway, or local Docker for bootcamp).
+- No database for MVP; session state in memory; artifacts written to a per-session directory on the container filesystem and downloadable via HTMX-served links.
 
 ### Monitoring & Observability
 - Per AAMAD rules: log each agent/task lifecycle event, capture `CrewOutput.raw`, append Prompt Trace + Audit to artifacts.
@@ -190,10 +191,13 @@
   - Can the crew reliably produce a usable build plan in <15 minutes for a realistic idea? (MVP validation target.)
   - Can GitHub repo recommendations be grounded and verifiable? (Quality gate for differentiation.)
   - Can per-session cost be held under $0.50? (Viability gate for a free tier.)
-- **Technical Architecture Choices**
+- **Technical Architecture Choices (user-confirmed 2026-04-23)**
   - Framework: CrewAI (confirmed; aligns with repo and AAMAD adapter rules).
   - Execution: sequential process, memory off, temperature ≤ 0.4.
-  - Frontend: minimal chat UI; no auth; no persistence in MVP.
+  - Agents: 5 — discovery, synthesizer, stack-recommender, repo-finder, orchestrator.
+  - Runtime stack: single Python service using **FastHTML + HTMX** (consolidates backend + server-rendered frontend; replaces the earlier FastAPI + Next.js/assistant-ui split).
+  - LLM: **Claude API** (Anthropic) via CrewAI's LiteLLM layer with `anthropic/` model IDs.
+  - No auth; no persistence in MVP.
 - **Market Positioning**
   - "The fastest path from idea to build plan for solo developers." Not a PM tool. Not a coding copilot.
 - **Resource Requirements**
@@ -257,6 +261,9 @@
 - Target willingness-to-pay is in the $10–$20/mo individual-dev tool band; to be validated with user interviews post-MVP.
 - GitHub public search API is sufficient for repo discovery at MVP volumes; rate-limit headroom to be verified.
 - Users will tolerate a 5–10-question discovery conversation if it produces a useful artifact in <15 minutes.
+- "Claude API" as used here means Anthropic Claude models invoked through CrewAI's native LiteLLM layer with the `anthropic/` model-ID prefix, NOT a direct `anthropic` SDK integration with a custom CrewAI LLM wrapper. Direct-SDK interpretation would require a materially different backend build.
+- "FastHTML + HTMX replaces FastAPI" is interpreted as replacing both the FastAPI backend AND the separate Next.js/assistant-ui frontend selected in the earlier SAD draft — consolidating to a single Python service. A narrower interpretation (e.g., keep Next.js, only swap backend) would contradict the "frontend stack" framing and is not assumed.
+- FastHTML's HTMX-driven streaming and partial-update patterns are expressive enough to replace the SSE + assistant-ui tool-renderer design for MVP artifact display. To be validated during @system-arch's SAD update.
 
 ---
 
@@ -264,10 +271,13 @@
 
 - What is the verified addressable market size for "solo developers who start side projects"? Source: Stack Overflow Survey + GitHub Octoverse cross-reference.
 - Full competitive scan: ChatPRD, Notion AI (PRD mode), Linear AI, custom-GPTs marketplace — feature-by-feature matrix. Owner: @product-mgr.
-- Which LLM provider/model anchors MVP? Cost vs. quality trade-off needs a concrete choice before @system-arch commits the SAD.
+- ~~Which LLM provider/model anchors MVP?~~ **Resolved 2026-04-23:** Claude API (Anthropic) via CrewAI/LiteLLM. Specific model IDs per agent (cheaper for A1 Discovery vs. frontier for A2 Synthesizer?) remains open for @system-arch / @backend-eng.
 - Is there a curated stack-archetype corpus (e.g., public "awesome" lists) suitable for grounding the stack-recommender, or does it need to be authored in-repo?
 - Pricing research gap: what do solo devs actually pay for PM-adjacent tools today (Notion, Linear personal tiers)? Survey needed.
 - Post-MVP: does a plan-to-agentic-builder hand-off (Devin, Replit Agent, Claude Code) belong on the roadmap, or is it out of scope?
+- **Orchestrator agent — delegation mode.** With 5 agents including a dedicated orchestrator, does the orchestrator use CrewAI hierarchical/manager mode (`allow_delegation=true` on it only) or does it run as a first-agent coordinator inside a still-sequential process? Owner: @system-arch — resolve in the SAD update.
+- **FastHTML + HTMX feasibility for streaming.** Can FastHTML + HTMX deliver the streaming agent-output UX that assistant-ui + SSE gave the earlier design, without a materially worse user experience? Owner: @system-arch / @frontend-eng. Spike if uncertain.
+- **Downstream cascade required.** This MRD update invalidates PRD §3 (4-agent decomposition) and SAD §§1–5 (two-service Next.js + FastAPI topology, ADR-1, ADR-2, ADR-5, ADR-7). @product-mgr to revise `prd.md`; @system-arch to revise `sad.md`. Tracking these as blocking before any Build-phase scaffolding.
 
 ---
 
@@ -283,3 +293,23 @@
 - **Prohibited actions attempted:** none.
 - **Template headings check:** Executive Summary, 5 Research Dimensions, Critical Decision Points, Risk Assessment Matrix, Actionable Recommendations, Sources, Assumptions, Open Questions, Audit — all present.
 - **Handoff:** ready for @product-mgr to author PRD and for @system-arch to begin SAD derivation once PRD lands.
+
+### Revision — 2026-04-23 (r2)
+
+- **Timestamp:** 2026-04-23
+- **Persona:** @product-mgr
+- **Action:** revised MRD to incorporate three user-confirmed decisions: (1) LLM provider = Claude API via CrewAI/LiteLLM with `anthropic/` prefix; (2) crew expanded to 5 agents — discovery, synthesizer, stack-recommender, repo-finder, plus a dedicated orchestrator agent; (3) runtime stack consolidated to a single FastHTML + HTMX Python service, replacing the earlier two-service FastAPI + Next.js/assistant-ui topology.
+- **Sections updated:** Executive Summary (Technical Feasibility paragraph); §2 Key Insights and Implications; §4 Deployment Architecture; Critical Decision Points (Technical Architecture Choices); Assumptions (added 3 decision-scoped assumptions); Open Questions (resolved LLM-provider question; added orchestrator-delegation, FastHTML-streaming-feasibility, and downstream-cascade items).
+- **Interpretation choices made (flagged in Assumptions for downstream validation):**
+  - "Claude API" read as the upstream provider name, reached via CrewAI's native LiteLLM layer — NOT a direct `anthropic` SDK integration. Matches SAD ADR-5.
+  - "FastHTML + HTMX replacing FastAPI" read as consolidation of both the FastAPI backend AND the Next.js/assistant-ui frontend into one Python service. Narrower readings are not assumed.
+- **Downstream impact (not applied in this pass — out of @product-mgr scope for an MRD update):**
+  - `prd.md` §3 Technical Requirements & Architecture and §6 UX references to a chat-UI frontend need revision to reflect 5 agents and the FastHTML + HTMX stack.
+  - `sad.md` Executive Summary, ADR-1 (FastAPI + Next.js split), ADR-2 (Next.js/assistant-ui/Tailwind), ADR-5 (LLM provider — reconfirm Claude API phrasing), ADR-6 (sequential vs. orchestrator-managed), ADR-7 (SSE transport — likely superseded by HTMX patterns), §3 Frontend Architecture, §4 Backend Architecture, §6 Data Flow, Views, and Traceability Matrix all need revision.
+  - No Build-phase scaffolding should begin until the PRD and SAD are revised and re-approved.
+- **Inputs read:** `project-context/1.define/mrd.md` (prior revision), `project-context/1.define/prd.md`, `project-context/1.define/sad.md`, `.claude/rules/aamad-core.md`, `.claude/rules/adapter-crewai.md`, `.claude/agents/product-mgr.md`.
+- **Output:** `project-context/1.define/mrd.md` (this file, r2).
+- **Model / tooling:** revised via Claude Code main thread (model: claude-opus-4-7[1m]).
+- **Temperature / determinism:** N/A (single-pass authoring).
+- **Prohibited actions attempted:** none. Original Audit entry preserved; revision appended per aamad-core append-only Audit convention.
+- **Handoff:** @product-mgr to revise `prd.md`; @system-arch to revise `sad.md`. Both are blocking before @project-mgr scaffolds.
